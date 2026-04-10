@@ -1,5 +1,4 @@
 const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } = require('@whiskeysockets/baileys');
-const qrcode = require('qrcode-terminal');
 const pino = require('pino');
 
 // 🌟 SECURE FIREBASE URL FROM GITHUB SECRETS 🌟
@@ -36,24 +35,35 @@ async function startBot() {
     const { state, saveCreds } = await useMultiFileAuthState('session_data');
     const { version } = await fetchLatestBaileysVersion();
 
+    // ⚠️ YAHAN APNA BOT WALA WHATSAPP NUMBER LIKHEIN (Country code ke sath, bina '+' ke)
+    const phoneNumber = "923059108301"; 
+
     const sock = makeWASocket({
         version,
         auth: state,
-        printQRInTerminal: false,
+        printQRInTerminal: false, // QR code completely disabled
         logger: pino({ level: 'silent' }),
-        browser: ["SEO", "Tools", "1"] 
+        browser: ["Ubuntu", "Chrome", "20.0.04"] // Essential for Pairing Code to work
     });
 
+    // --- 🌟 PAIRING CODE LOGIC 🌟 ---
+    if (!sock.authState.creds.registered) {
+        setTimeout(async () => {
+            try {
+                let code = await sock.requestPairingCode(phoneNumber);
+                code = code?.match(/.{1,4}/g)?.join("-") || code;
+                console.log('\n==================================================');
+                console.log(`🔑 AAPKA PAIRING CODE: ${code}`);
+                console.log('Yeh code apne WhatsApp mein (Link with phone number instead) mein daalein!');
+                console.log('==================================================\n');
+            } catch (error) {
+                console.error("Pairing Code Error: ", error);
+            }
+        }, 3000);
+    }
+
     sock.ev.on('connection.update', (update) => {
-        const { connection, lastDisconnect, qr } = update;
-        
-        if (qr) {
-            console.clear(); 
-            console.log('\n==================================================');
-            console.log('⚠️ QR CODE TOO BIG? CLICK "View raw logs" in top right!');
-            console.log('==================================================\n');
-            qrcode.generate(qr, { small: true }); 
-        }
+        const { connection, lastDisconnect } = update;
 
         if (connection === 'open') console.log('✅ SEO TOOLS AI IS ONLINE!');
         if (connection === 'close') {
@@ -76,15 +86,14 @@ async function startBot() {
 
         // --- 🛒 STEP 2: FINISH ORDER & SEND TO ADMIN PANEL ---
         if (orderStates[sender]?.step === 'WAITING_FOR_DETAILS') {
-            const customerDetails = text; // Now expects Name, Email, and Website
+            const customerDetails = text; 
             const item = orderStates[sender].item;
             const customerWaNumber = sender.split('@')[0];
 
-            // Match the exact format of your Admin Panel
             const seoOrder = {
                 userId: "whatsapp_" + customerWaNumber,
                 phone: customerWaNumber, 
-                details: customerDetails, // Saves Name, Email, and Website URL typed by them
+                details: customerDetails, 
                 items: [{
                     id: item.id,
                     name: item.name,
@@ -92,13 +101,12 @@ async function startBot() {
                     img: item.imageUrl || "",
                     quantity: 1
                 }],
-                total: parseFloat(item.price).toFixed(2), // Flat price for digital goods
+                total: parseFloat(item.price).toFixed(2), 
                 status: "Pending Setup",
                 method: "Invoice via WhatsApp",
                 timestamp: new Date().toISOString()
             };
 
-            // Save order securely via REST API
             try {
                 await fetch(`${FIREBASE_URL}/orders.json`, {
                     method: 'POST',
@@ -114,12 +122,11 @@ async function startBot() {
             return;
         }
 
-        // --- 🌟 STEP 1: START ORDER FLOW (WITH IMAGE & DETAILS REQUEST) ---
+        // --- 🌟 STEP 1: START ORDER FLOW ---
         if (text.startsWith("order ")) {
             const productRequested = text.replace("order ", "").trim().toLowerCase();
             const currentTools = await getToolsList();
             
-            // Search the live database for the requested tool
             const matchedItem = currentTools.find(item => item.name.toLowerCase().includes(productRequested));
 
             if (!matchedItem) {
@@ -129,17 +136,14 @@ async function startBot() {
 
             orderStates[sender] = { step: 'WAITING_FOR_DETAILS', item: matchedItem };
             
-            // 🌟 REQUEST DIGITAL SETUP DETAILS 🌟
             const captionText = `🚀 *Setup Started!* \n\nYou selected: *${matchedItem.name}* ($${matchedItem.price}/mo)\n\nPlease reply with your *Full Name, Email Address, and Website URL* to create your account.`;
             
-            // If the product has an image URL in Firebase, send it as a WhatsApp Photo
             if (matchedItem.imageUrl) {
                 await sock.sendMessage(sender, { 
                     image: { url: matchedItem.imageUrl }, 
                     caption: captionText 
                 });
             } else {
-                // Fallback if no image is found
                 await sock.sendMessage(sender, { text: captionText });
             }
         }
