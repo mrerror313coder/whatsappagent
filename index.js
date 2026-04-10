@@ -35,15 +35,15 @@ async function startBot() {
     const { state, saveCreds } = await useMultiFileAuthState('session_data');
     const { version } = await fetchLatestBaileysVersion();
 
-    // ⚠️ YAHAN APNA BOT WALA WHATSAPP NUMBER LIKHEIN (Country code ke sath, bina '+' ke)
+    // ⚠️ YAHAN APNA BOT WALA WHATSAPP NUMBER LIKHEIN
     const phoneNumber = "923059108301"; 
 
     const sock = makeWASocket({
         version,
         auth: state,
-        printQRInTerminal: false, // QR code completely disabled
+        printQRInTerminal: false, 
         logger: pino({ level: 'silent' }),
-        browser: ["Ubuntu", "Chrome", "20.0.04"] // Essential for Pairing Code to work
+        browser: ["Ubuntu", "Chrome", "20.0.04"] 
     });
 
     // --- 🌟 PAIRING CODE LOGIC 🌟 ---
@@ -77,7 +77,7 @@ async function startBot() {
     sock.ev.on('messages.upsert', async (m) => {
         const msg = m.messages[0];
         if (!msg.message || msg.key.remoteJid === 'status@broadcast') return;
-        if (msg.key.fromMe) return; // Loop Protection
+        if (msg.key.fromMe) return; 
 
         const sender = msg.key.remoteJid;
         const text = (msg.message.conversation || msg.message.extendedTextMessage?.text || "").toLowerCase();
@@ -117,7 +117,8 @@ async function startBot() {
                 console.log("Firebase Error: ", error);
             }
 
-            await sock.sendMessage(sender, { text: `✅ *Subscription Request Received!* \n\nThank you! Your access to *${item.name}* is being generated. \n\n*Total:* $${seoOrder.total}/month\n*Status:* Awaiting Payment\n\nOur admin will contact you shortly with the payment gateway link and your login credentials.` });
+            // ✅ YAHAN $ KO RS KIYA GAYA HAI
+            await sock.sendMessage(sender, { text: `✅ *Subscription Request Received!* \n\nThank you! Your access to *${item.name}* is being generated. \n\n*Total:* Rs. ${seoOrder.total}/month\n*Status:* Awaiting Payment\n\nOur admin will contact you shortly with the payment gateway link and your login credentials.` });
             delete orderStates[sender]; 
             return;
         }
@@ -136,7 +137,8 @@ async function startBot() {
 
             orderStates[sender] = { step: 'WAITING_FOR_DETAILS', item: matchedItem };
             
-            const captionText = `🚀 *Setup Started!* \n\nYou selected: *${matchedItem.name}* ($${matchedItem.price}/mo)\n\nPlease reply with your *Full Name, Email Address, and Website URL* to create your account.`;
+            // ✅ YAHAN $ KO RS KIYA GAYA HAI
+            const captionText = `🚀 *Setup Started!* \n\nYou selected: *${matchedItem.name}* (Rs. ${matchedItem.price}/mo)\n\nPlease reply with your *Full Name, Email Address, and Website URL* to create your account.`;
             
             if (matchedItem.imageUrl) {
                 await sock.sendMessage(sender, { 
@@ -162,7 +164,8 @@ async function startBot() {
 
             let menuMessage = "📈 *PREMIUM SEO TOOLS PRICING* 🚀\n\n";
             currentTools.forEach(item => {
-                menuMessage += `🔸 *${item.name}* - $${item.price}/mo\n`;
+                // ✅ YAHAN BHI $ KO RS KIYA GAYA HAI
+                menuMessage += `🔸 *${item.name}* - Rs. ${item.price}/mo\n`;
             });
             menuMessage += "\n_To subscribe, reply with 'order [tool name]'_";
             
